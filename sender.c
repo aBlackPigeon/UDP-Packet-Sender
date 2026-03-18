@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <time.h>
+#include "common.h"
 
 #define BUFFER_SIZE 1024
 
@@ -32,8 +34,37 @@ int main(int argc, char *argv[]){
     server_addr.sin_port = htons(port);
     inet_pton(AF_INET,ip,&server_addr.sin_addr);
 
+    //Packet structure
+    Packet pkt;
+    // pkt.sequence = 1;
+    // static int seq = 1;
+    // pkt.sequence = seq++;
+    // pkt.timestamp = time(NULL);
+    
+    strncpy(pkt.message,message,MAX_MSG_SIZE);
+
     // 3. send message
-    sendto(sockfd,message, strlen(message), 0 , (struct sockaddr*)&server_addr, sizeof(server_addr));
+    // sendto(sockfd,message, strlen(message), 0 , (struct sockaddr*)&server_addr, sizeof(server_addr));
+
+    // sending packet
+    //sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+
+    // send 100 packets
+    int count = 100;
+
+    for(int i = 0;i<count;i++){
+        // Packet pkt;
+        pkt.sequence = i + 1;
+        pkt.timestamp = time(NULL);
+
+        snprintf(pkt.message,MAX_MSG_SIZE, "%s %d",message,i+1);
+
+        sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+
+        printf("Sent Packet %d\n",pkt.sequence);
+
+        // sleep(1);
+    }
 
     printf("Message send\n");
 
