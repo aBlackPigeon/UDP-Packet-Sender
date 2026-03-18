@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <sys/time.h>
 #include "common.h"
 
 #define BUFFER_SIZE 1024
@@ -50,12 +51,17 @@ int main(int argc, char *argv[]){
     //sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
 
     // send 100 packets
-    int count = 100;
+    int count = 10000;
 
     for(int i = 0;i<count;i++){
         // Packet pkt;
         pkt.sequence = i + 1;
-        pkt.timestamp = time(NULL);
+        // pkt.timestamp = time(NULL); // this returns current time in seconds
+
+        // time in microseconds
+        struct timeval tv;
+        gettimeofday(&tv,NULL);
+        pkt.timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
 
         snprintf(pkt.message,MAX_MSG_SIZE, "%s %d",message,i+1);
 
