@@ -9,6 +9,7 @@
 
 #define BUFFER_SIZE 1024
 
+
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -81,13 +82,22 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        static int last_seq = -1;
+
+        if(pkt.sequence == last_seq){
+            // duplicate packet --> ignore completely
+            continue;
+        }
+
+        last_seq = pkt.sequence;
+
         int drop_simulate = 1; // 0-> false 1-> true
 
         // packet drop
         if (drop_simulate){
             int drop = rand() % 100;
 
-            if (drop < 40){
+            if (drop < 20){
                 //printf("Simulating packet drop for seq %d\n", pkt.sequence);
                 //continue;
                 printf("Dropping ack for sequence %d\n",pkt.sequence);
@@ -109,7 +119,7 @@ int main(int argc, char *argv[])
         //printf("Latency %ld microseconds\n" , latency);
 
         fprintf(log_file,"%ld,%d,%ld,%s,%d\n",
-        pkt.timestamp,pkt.sequence,latency,inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+        receive_time,pkt.sequence,latency,inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
 
         if(packet_count % 1000 == 0){
             fflush(log_file);
@@ -144,10 +154,10 @@ int main(int argc, char *argv[])
         double bps = total_bytes / seconds;
 
         // Receiver send ACK
-        AckPacket ack;
-        ack.ack_sequence = pkt.sequence;
+        // AckPacket ack;
+        // ack.ack_sequence = pkt.sequence;
 
-        sendto(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&client_addr,addr_len);
+        // sendto(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&client_addr,addr_len);
 
         // printf("\n Throughput stats\n");
         // printf("Packets/sec : %.2f\n", pps);

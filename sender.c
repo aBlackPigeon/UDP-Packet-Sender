@@ -40,7 +40,10 @@ int main(int argc, char *argv[]){
     memset(&server_addr, 0 , sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
-    inet_pton(AF_INET,ip,&server_addr.sin_addr);
+    if(inet_pton(AF_INET,ip,&server_addr.sin_addr) <= 0){
+        perror("Invalid Address");
+        return 1;
+    }
 
     //Packet structure
     Packet pkt;
@@ -95,42 +98,116 @@ int main(int argc, char *argv[]){
 
     // ===== loop with retransmission =====
 
-    int count = 50;
+    // int count = 50;
 
-    for(int i = 0 ; i<count; i++){
-        Packet pkt;
-        pkt.sequence = i + 1;
+    // for(int i = 0 ; i<count; i++){
+    //     Packet pkt;
+    //     pkt.sequence = i + 1;
 
-        struct timeval tv;
-        gettimeofday(&tv,NULL);
-        pkt.timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
+    //     struct timeval tv;
+    //     gettimeofday(&tv,NULL);
+    //     pkt.timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
 
-        snprintf(pkt.message,MAX_MSG_SIZE, "%s %d", message,i+1);
+    //     snprintf(pkt.message,MAX_MSG_SIZE, "%s %d", message,i+1);
 
-        int ack_received = 0;
+    //     int ack_received = 0;
 
-        while(!ack_received){
-            // send packet
+    //     while(!ack_received){
+    //         // send packet
+    //         sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+
+    //         printf("Sent Packet %d\n",pkt.sequence);
+
+    //         // 2. wait for ack
+    //         AckPacket ack;
+    //         socklen_t len = sizeof(server_addr);
+
+    //         int n = recvfrom(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+
+    //         if(n < 0){
+    //             printf("Timeout -> Resending Packet %d\n",pkt.sequence);
+    //         }else if(ack.ack_sequence == pkt.sequence){
+    //             printf("Ack receiver for %d\n",pkt.sequence);
+    //             ack_received = 1;
+    //         }
+    //     }
+    // }
+
+    // ===== sliding window for transmission
+
+    // int window_size = 5; // fixed
+    
+    // additive increase , multiplicative decrease
+
+    int window_size = 1;
+    int max_window = 50;
+
+    int base = 1;
+    int next_seq = 1;
+
+    int total_packets = 70;
+
+    Packet window[1000];
+
+    while(base <= total_packets){
+        // send packets within the window
+        while(next_seq < base + window_size && next_seq <= total_packets){
+            Packet pkt;
+            pkt.sequence = next_seq;
+
+            struct timeval tv;
+            gettimeofday(&tv,NULL);
+            pkt.timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
+
+            snprintf(pkt.message,MAX_MSG_SIZE, "%s %d",message, next_seq);
+
+            window[next_seq - 1] = pkt;
+
             sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
 
-            printf("Sent Packet %d\n",pkt.sequence);
+            printf("📤 Sent %d\n",next_seq);
 
-            // 2. wait for ack
-            AckPacket ack;
-            socklen_t len = sizeof(server_addr);
+            next_seq++;
+        }
 
-            int n = recvfrom(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+        // receive ack
+        AckPacket ack;
+        socklen_t len = sizeof(server_addr);
 
-            if(n < 0){
-                printf("Timeout -> Resending Packet %d\n",pkt.sequence);
-            }else if(ack.ack_sequence == pkt.sequence){
-                printf("Ack receiver for %d\n",pkt.sequence);
-                ack_received = 1;
+        int n = recvfrom(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+
+        if(n>=0){
+            printf("✅ Ack %d\n", ack.ack_sequence);
+
+            if(ack.ack_sequence >= base){
+                base = ack.ack_sequence + 1;
+
+                // increase window
+                if(window_size < max_window){
+                    window_size++;
+                }
+
+                printf("Window increased to %d\n", window_size);
+            }
+        }else{
+            // timeout -> resend all un-acked packets
+            printf("Timeout Resending window\n");
+
+            // decrease window
+            window_size = window_size / 2;
+            if(window_size < 1){
+                window_size = 1;
+            }
+
+            printf("Window reduced to %d\n", window_size);
+
+            for(int i = base;i<next_seq;i++){
+                sendto(sockfd,&window[i-1],sizeof(Packet),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+
+                printf("🔁 Resent %d\n",i);
             }
         }
     }
-
-   
 
     printf("Message send\n");
 
