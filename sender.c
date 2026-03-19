@@ -29,6 +29,13 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
+    // socket timeout
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    
+    setsockopt(sockfd, SOL_SOCKET,SO_RCVTIMEO, &timeout,sizeof(timeout));
+
     // 2. setup the destination
     memset(&server_addr, 0 , sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -51,7 +58,7 @@ int main(int argc, char *argv[]){
     //sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
 
     // send 100 packets
-    int count = 10000;
+    int count = 100;
 
     for(int i = 0;i<count;i++){
         // Packet pkt;
@@ -66,6 +73,18 @@ int main(int argc, char *argv[]){
         snprintf(pkt.message,MAX_MSG_SIZE, "%s %d",message,i+1);
 
         sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+
+        //wait for ack
+        AckPacket ack;
+        socklen_t len = sizeof(server_addr);
+
+        int n = recvfrom(sockfd, &ack, sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+
+        if(n < 0){
+            printf("Ack not received for seq %d\n", pkt.sequence);
+        }else{
+            printf("Ack receiver for seq %d\n", ack.ack_sequence);
+        }
 
         printf("Sent Packet %d\n",pkt.sequence);
 

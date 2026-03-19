@@ -9,4 +9,8 @@ typedef struct{
     char message[MAX_MSG_SIZE];
 } Packet;
 
+typedef struct{
+    int ack_sequence;
+} AckPacket;
+
 #endif

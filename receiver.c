@@ -138,14 +138,20 @@ int main(int argc, char *argv[])
         double pps = packet_count / seconds;
         double bps = total_bytes / seconds;
 
-        printf("\n Throughput stats\n");
-        printf("Packets/sec : %.2f\n", pps);
-        printf("Bytes/sec: %.2f\n",bps);
+        // Receiver send ACK
+        AckPacket ack;
+        ack.ack_sequence = pkt.sequence;
 
-        // printf("\nReceived Packet\n");
-        // printf("Sequence %d\n", pkt.sequence);
+        sendto(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&client_addr,addr_len);
+
+        // printf("\n Throughput stats\n");
+        // printf("Packets/sec : %.2f\n", pps);
+        // printf("Bytes/sec: %.2f\n",bps);
+
+        printf("\nReceived Packet\n");
+        printf("Sequence %d\n", pkt.sequence);
         // printf("Timestamp %ld\n", pkt.timestamp);
-        // printf("Message %s\n", pkt.message);
+        printf("Message %s\n", pkt.message);
 
         // printf("From ip: %s\n", inet_ntoa(client_addr.sin_addr));
         // printf("From port : %d\n", ntohs(client_addr.sin_port));
