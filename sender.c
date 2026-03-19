@@ -57,39 +57,80 @@ int main(int argc, char *argv[]){
     // sending packet
     //sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
 
+    // ======= loop without retransimission =======
+
     // send 100 packets
-    int count = 100;
+    // int count = 100;
 
-    for(int i = 0;i<count;i++){
-        // Packet pkt;
+    // for(int i = 0;i<count;i++){
+    //     // Packet pkt;
+    //     pkt.sequence = i + 1;
+    //     // pkt.timestamp = time(NULL); // this returns current time in seconds
+
+    //     // time in microseconds
+    //     struct timeval tv;
+    //     gettimeofday(&tv,NULL);
+    //     pkt.timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
+
+    //     snprintf(pkt.message,MAX_MSG_SIZE, "%s %d",message,i+1);
+
+    //     sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+
+    //     //wait for ack
+    //     AckPacket ack;
+    //     socklen_t len = sizeof(server_addr);
+
+    //     int n = recvfrom(sockfd, &ack, sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+
+    //     if(n < 0){
+    //         printf("Ack not received for seq %d\n", pkt.sequence);
+    //     }else{
+    //         printf("Ack received for seq %d\n", ack.ack_sequence);
+    //     }
+
+    //     printf("Sent Packet %d\n",pkt.sequence);
+
+    //     // sleep(1);
+    // }
+
+    // ===== loop with retransmission =====
+
+    int count = 50;
+
+    for(int i = 0 ; i<count; i++){
+        Packet pkt;
         pkt.sequence = i + 1;
-        // pkt.timestamp = time(NULL); // this returns current time in seconds
 
-        // time in microseconds
         struct timeval tv;
         gettimeofday(&tv,NULL);
         pkt.timestamp = tv.tv_sec * 1000000 + tv.tv_usec;
 
-        snprintf(pkt.message,MAX_MSG_SIZE, "%s %d",message,i+1);
+        snprintf(pkt.message,MAX_MSG_SIZE, "%s %d", message,i+1);
 
-        sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
+        int ack_received = 0;
 
-        //wait for ack
-        AckPacket ack;
-        socklen_t len = sizeof(server_addr);
+        while(!ack_received){
+            // send packet
+            sendto(sockfd,&pkt,sizeof(pkt),0,(struct sockaddr*)&server_addr,sizeof(server_addr));
 
-        int n = recvfrom(sockfd, &ack, sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+            printf("Sent Packet %d\n",pkt.sequence);
 
-        if(n < 0){
-            printf("Ack not received for seq %d\n", pkt.sequence);
-        }else{
-            printf("Ack receiver for seq %d\n", ack.ack_sequence);
+            // 2. wait for ack
+            AckPacket ack;
+            socklen_t len = sizeof(server_addr);
+
+            int n = recvfrom(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&server_addr,&len);
+
+            if(n < 0){
+                printf("Timeout -> Resending Packet %d\n",pkt.sequence);
+            }else if(ack.ack_sequence == pkt.sequence){
+                printf("Ack receiver for %d\n",pkt.sequence);
+                ack_received = 1;
+            }
         }
-
-        printf("Sent Packet %d\n",pkt.sequence);
-
-        // sleep(1);
     }
+
+   
 
     printf("Message send\n");
 

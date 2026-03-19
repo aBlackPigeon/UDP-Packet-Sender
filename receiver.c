@@ -81,15 +81,20 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        int drop_simulate = 0; // 0-> false 1-> true
+        int drop_simulate = 1; // 0-> false 1-> true
 
         // packet drop
         if (drop_simulate){
             int drop = rand() % 100;
 
-            if (drop < 90){
+            if (drop < 40){
                 //printf("Simulating packet drop for seq %d\n", pkt.sequence);
-                continue;
+                //continue;
+                printf("Dropping ack for sequence %d\n",pkt.sequence);
+            }else{
+                AckPacket ack;
+                ack.ack_sequence = pkt.sequence;
+                sendto(sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&client_addr,addr_len);
             }
         }
 
@@ -148,8 +153,8 @@ int main(int argc, char *argv[])
         // printf("Packets/sec : %.2f\n", pps);
         // printf("Bytes/sec: %.2f\n",bps);
 
-        printf("\nReceived Packet\n");
-        printf("Sequence %d\n", pkt.sequence);
+        // printf("\nReceived Packet\n");
+        // printf("Sequence %d\n", pkt.sequence);
         // printf("Timestamp %ld\n", pkt.timestamp);
         printf("Message %s\n", pkt.message);
 
